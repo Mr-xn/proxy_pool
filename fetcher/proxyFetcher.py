@@ -150,12 +150,16 @@ class ProxyFetcher(object):
         """ 在线文本代理列表（proxyscrape / GitHub 镜像等多源） """
         urls = [
             'https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&protocol=http',
+            'https://openproxylist.xyz/http.txt',
             'https://www.proxy-list.download/api/v1/get?type=http',
             'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
+            'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/results/http/proxies.txt',
             'https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt',
             'https://raw.githubusercontent.com/prxchk/proxy-list/main/all.txt',
+            'https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt',
             'https://raw.githubusercontent.com/zloi-user/hideip.me/main/http.txt',
             'https://www.proxyscan.io/api/proxy?type=http&format=txt',
+            'https://api.openproxylist.xyz/http.txt',
         ]
         proxy_pattern = re.compile(
             r'^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?):\d{2,5}$'
@@ -169,6 +173,71 @@ class ProxyFetcher(object):
                         yield line
             except Exception as e:
                 print(e)
+
+    @staticmethod
+    def freeProxy13():
+        """ free-proxy-list.net """
+        try:
+            tree = WebRequest().get('https://free-proxy-list.net/', timeout=10).tree
+            for tr in tree.xpath('//table[contains(@class,"table-striped")]//tr'):
+                tds = tr.xpath('./td/text()')
+                if len(tds) > 6 and tds[6].strip() == 'yes':
+                    ip = tds[0].strip()
+                    port = tds[1].strip()
+                    yield '%s:%s' % (ip, port)
+        except Exception as e:
+            print(e)
+
+    @staticmethod
+    def freeProxy14():
+        """ proxydb.net """
+        try:
+            r = WebRequest().get('https://proxydb.net/?protocol=https&offset=0', timeout=10)
+            proxies = re.findall(
+                r'>\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{2,5})\s*<',
+                r.text
+            )
+            for proxy in proxies:
+                yield proxy
+        except Exception as e:
+            print(e)
+
+    @staticmethod
+    def freeProxy15():
+        """ geonode.com 免费代理 """
+        try:
+            tree = WebRequest().get('https://geonode.com/free-proxy-list/', timeout=10).tree
+            for tr in tree.xpath('//table//tbody//tr'):
+                tds = tr.xpath('./td/text()')
+                if len(tds) > 1:
+                    ip = tds[0].strip()
+                    port = tds[1].strip()
+                    if ip and port and re.match(r'^\d+$', port):
+                        yield '%s:%s' % (ip, port)
+        except Exception as e:
+            print(e)
+
+    @staticmethod
+    def freeProxy16():
+        """ proxifly 混合协议代理列表（仅提取 http/https 条目） """
+        url = 'https://github.com/proxifly/free-proxy-list/raw/refs/heads/main/proxies/all/data.txt'
+        ip_port_pattern = re.compile(
+            r'^(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)'
+            r'(?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)){3}'
+            r':\d{1,5}$'
+        )
+        try:
+            r = WebRequest().get(url, timeout=15)
+            for line in r.text.splitlines():
+                line = line.strip()
+                if re.match(r'^https?://', line, re.IGNORECASE):
+                    proxy = re.sub(r'^https?://', '', line, flags=re.IGNORECASE).split()[0]
+                    if ip_port_pattern.match(proxy):
+                        port = int(proxy.split(':')[1])
+                        if 1 <= port <= 65535:
+                            yield proxy
+        except Exception as e:
+            print(e)
 
     # @staticmethod
     # def wallProxy01():
