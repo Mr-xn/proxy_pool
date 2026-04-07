@@ -104,6 +104,14 @@ class DoValidator(object):
                 return region
         except:
             pass
+        try:
+            url = 'https://api.ip.sb/geoip/%s' % ip
+            r = WebRequest().get(url=url, retry_time=1, timeout=5).json
+            region = ' '.join(filter(None, [r.get('country'), r.get('region'), r.get('city')]))
+            if region:
+                return region
+        except:
+            pass
         return 'error'
 
 
