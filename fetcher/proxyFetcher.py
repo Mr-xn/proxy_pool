@@ -47,19 +47,6 @@ class ProxyFetcher(object):
                 sleep(5)
 
     @staticmethod
-    def freeProxy02():
-        """
-        代理66 http://www.66ip.cn/
-        """
-        url = "http://www.66ip.cn/"
-        resp = WebRequest().get(url, timeout=10).tree
-        for i, tr in enumerate(resp.xpath("(//table)[3]//tr")):
-            if i > 0:
-                ip = "".join(tr.xpath("./td[1]/text()")).strip()
-                port = "".join(tr.xpath("./td[2]/text()")).strip()
-                yield "%s:%s" % (ip, port)
-
-    @staticmethod
     def freeProxy03():
         """ 开心代理 """
         target_urls = ["http://www.kxdaili.com/dailiip.html", "http://www.kxdaili.com/dailiip/2/1.html"]
@@ -106,18 +93,6 @@ class ProxyFetcher(object):
             sleep(1)  # 必须sleep 不然第二条请求不到数据
             for tr in proxy_list[1:]:
                 yield ':'.join(tr.xpath('./td/text()')[0:2])
-
-    @staticmethod
-    def freeProxy06():
-        """ 冰凌代理 https://www.binglx.cn """
-        url = "https://www.binglx.cn/?page=1"
-        try:
-            tree = WebRequest().get(url).tree
-            proxy_list = tree.xpath('.//table//tr')
-            for tr in proxy_list[1:]:
-                yield ':'.join(tr.xpath('./td/text()')[0:2])
-        except Exception as e:
-            print(e)
 
     @staticmethod
     def freeProxy07():
@@ -169,6 +144,29 @@ class ProxyFetcher(object):
                 yield each['ip']
         except Exception as e:
             print(e)
+
+    @staticmethod
+    def freeProxy12():
+        """ 在线文本代理列表（proxyscrape / GitHub 镜像等多源） """
+        urls = [
+            'https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&protocol=http',
+            'https://www.proxy-list.download/api/v1/get?type=http',
+            'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
+            'https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt',
+            'https://raw.githubusercontent.com/prxchk/proxy-list/main/all.txt',
+            'https://raw.githubusercontent.com/zloi-user/hideip.me/main/http.txt',
+            'https://www.proxyscan.io/api/proxy?type=http&format=txt',
+        ]
+        proxy_pattern = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{2,5}$')
+        for url in urls:
+            try:
+                r = WebRequest().get(url, timeout=10)
+                for line in r.text.splitlines():
+                    line = line.strip()
+                    if proxy_pattern.match(line):
+                        yield line
+            except Exception as e:
+                print(e)
 
     # @staticmethod
     # def wallProxy01():
@@ -235,7 +233,7 @@ class ProxyFetcher(object):
 
 if __name__ == '__main__':
     p = ProxyFetcher()
-    for _ in p.freeProxy06():
+    for _ in p.freeProxy12():
         print(_)
 
 # http://nntime.com/proxy-list-01.htm
