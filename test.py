@@ -16,6 +16,8 @@ from test import testProxyValidator
 from test import testConfigHandler
 from test import testLogHandler
 from test import testDbClient
+from test import testProxyClass
+from test import testSocksSupport
 
 if __name__ == '__main__':
     print("ConfigHandler:")
@@ -29,3 +31,10 @@ if __name__ == '__main__':
 
     print("ProxyValidator:")
     testProxyValidator.testProxyValidator()
+
+    print("ProxyClass:")
+    testProxyClass.testProxyClass()
+    testProxyClass.testProxyProtocol()
+
+    print("SocksSupport:")
+    testSocksSupport.runAllTests()

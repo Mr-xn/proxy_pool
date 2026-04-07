@@ -42,14 +42,22 @@ class JsonResponse(Response):
 app.response_class = JsonResponse
 
 api_list = [
-    {"url": "/get", "params": "type: ''https'|''", "desc": "get a proxy"},
-    {"url": "/get_raw", "params": "type: ''https'|''", "desc": "get a proxy in raw format (e.g. http://x.x.x.x:8080)"},
-    {"url": "/pop", "params": "", "desc": "get and delete a proxy"},
+    {"url": "/get", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get a proxy"},
+    {"url": "/get_raw", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get a proxy in raw format (e.g. http://x.x.x.x:8080)"},
+    {"url": "/pop", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get and delete a proxy"},
     {"url": "/delete", "params": "proxy: 'e.g. 127.0.0.1:8080'", "desc": "delete an unable proxy"},
-    {"url": "/all", "params": "type: ''https'|''", "desc": "get all proxy from proxy pool"},
+    {"url": "/all", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get all proxy from proxy pool"},
     {"url": "/count", "params": "", "desc": "return proxy count"}
     # 'refresh': 'refresh proxy pool',
 ]
+
+VALID_PROXY_TYPES = {"https", "socks4", "socks4a", "socks5"}
+
+
+def _get_proxy_type(request):
+    """Parse and normalize the 'type' query parameter."""
+    t = request.args.get("type", "").lower().strip()
+    return t if t in VALID_PROXY_TYPES else None
 
 
 @app.route('/')
@@ -59,25 +67,27 @@ def index():
 
 @app.route('/get/')
 def get():
-    https = request.args.get("type", "").lower() == 'https'
-    proxy = proxy_handler.get(https)
+    proxy_type = _get_proxy_type(request)
+    proxy = proxy_handler.get(proxy_type)
     return proxy.to_dict if proxy else {"code": 0, "src": "no proxy"}
 
 
 @app.route('/get_raw/')
 def getRaw():
-    https = request.args.get("type", "").lower() == 'https'
-    proxy = proxy_handler.get(https)
+    proxy_type = _get_proxy_type(request)
+    proxy = proxy_handler.get(proxy_type)
     if proxy:
-        scheme = "https" if proxy.https else "http"
+        scheme = proxy.protocol if proxy.protocol in ("socks4", "socks4a", "socks5") else (
+            "https" if proxy.https else "http"
+        )
         return Response("{}://{}".format(scheme, proxy.proxy), mimetype='text/plain')
     return Response("no proxy", mimetype='text/plain')
 
 
 @app.route('/pop/')
 def pop():
-    https = request.args.get("type", "").lower() == 'https'
-    proxy = proxy_handler.pop(https)
+    proxy_type = _get_proxy_type(request)
+    proxy = proxy_handler.pop(proxy_type)
     return proxy.to_dict if proxy else {"code": 0, "src": "no proxy"}
 
 
@@ -89,8 +99,8 @@ def refresh():
 
 @app.route('/all/')
 def getAll():
-    https = request.args.get("type", "").lower() == 'https'
-    proxies = proxy_handler.getAll(https)
+    proxy_type = _get_proxy_type(request)
+    proxies = proxy_handler.getAll(proxy_type)
     return jsonify([_.to_dict for _ in proxies])
 
 
@@ -104,14 +114,16 @@ def delete():
 @app.route('/count/')
 def getCount():
     proxies = proxy_handler.getAll()
-    http_type_dict = {}
+    protocol_dict = {}
     source_dict = {}
+    https_count = 0
     for proxy in proxies:
-        http_type = 'https' if proxy.https else 'http'
-        http_type_dict[http_type] = http_type_dict.get(http_type, 0) + 1
+        protocol_dict[proxy.protocol] = protocol_dict.get(proxy.protocol, 0) + 1
+        if proxy.https:
+            https_count += 1
         for source in proxy.source.split('/'):
             source_dict[source] = source_dict.get(source, 0) + 1
-    return {"http_type": http_type_dict, "source": source_dict, "count": len(proxies)}
+    return {"protocol": protocol_dict, "https": https_count, "source": source_dict, "count": len(proxies)}
 
 
 def runFlask():

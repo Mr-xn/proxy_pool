@@ -8,17 +8,20 @@
 -------------------------------------------------
    Change Activity:
                    2019/7/11: 代理对象类型封装
+                   2024/01/01: 新增protocol字段支持socks4/socks4a/socks5
 -------------------------------------------------
 """
 __author__ = 'JHao'
 
 import json
 
+PROXY_PROTOCOLS = ("http", "socks4", "socks4a", "socks5")
+
 
 class Proxy(object):
 
     def __init__(self, proxy, fail_count=0, region="", anonymous="",
-                 source="", check_count=0, last_status="", last_time="", https=False):
+                 source="", check_count=0, last_status="", last_time="", https=False, protocol="http"):
         self._proxy = proxy
         self._fail_count = fail_count
         self._region = region
@@ -28,6 +31,7 @@ class Proxy(object):
         self._last_status = last_status
         self._last_time = last_time
         self._https = https
+        self._protocol = protocol if protocol in PROXY_PROTOCOLS else "http"
 
     @classmethod
     def createFromJson(cls, proxy_json):
@@ -40,7 +44,8 @@ class Proxy(object):
                    check_count=_dict.get("check_count", 0),
                    last_status=_dict.get("last_status", ""),
                    last_time=_dict.get("last_time", ""),
-                   https=_dict.get("https", False)
+                   https=_dict.get("https", False),
+                   protocol=_dict.get("protocol", "http")
                    )
 
     @property
@@ -89,10 +94,16 @@ class Proxy(object):
         return self._https
 
     @property
+    def protocol(self):
+        """ 代理协议类型: http/socks4/socks4a/socks5 """
+        return self._protocol
+
+    @property
     def to_dict(self):
         """ 属性字典 """
         return {"proxy": self.proxy,
                 "https": self.https,
+                "protocol": self.protocol,
                 "fail_count": self.fail_count,
                 "region": self.region,
                 "anonymous": self.anonymous,
@@ -125,6 +136,10 @@ class Proxy(object):
     @https.setter
     def https(self, value):
         self._https = value
+
+    @protocol.setter
+    def protocol(self, value):
+        self._protocol = value if value in PROXY_PROTOCOLS else "http"
 
     @region.setter
     def region(self, value):

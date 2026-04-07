@@ -26,22 +26,24 @@ class ProxyHandler(object):
         self.db = DbClient(self.conf.dbConn)
         self.db.changeTable(self.conf.tableName)
 
-    def get(self, https=False):
+    def get(self, proxy_type=None):
         """
         return a proxy
         Args:
-            https: True/False
+            proxy_type: None=任意, 'https'=支持https的http代理,
+                        'socks4'/'socks4a'/'socks5'=对应协议代理
         Returns:
         """
-        proxy = self.db.get(https)
+        proxy = self.db.get(proxy_type)
         return Proxy.createFromJson(proxy) if proxy else None
 
-    def pop(self, https):
+    def pop(self, proxy_type=None):
         """
         return and delete a useful proxy
+        :param proxy_type: 同get方法
         :return:
         """
-        proxy = self.db.pop(https)
+        proxy = self.db.pop(proxy_type)
         if proxy:
             return Proxy.createFromJson(proxy)
         return None
@@ -61,12 +63,13 @@ class ProxyHandler(object):
         """
         return self.db.delete(proxy.proxy)
 
-    def getAll(self, https=False):
+    def getAll(self, proxy_type=None):
         """
         get all proxy from pool as Proxy list
+        :param proxy_type: None=全部, 'https'/'socks4'/'socks4a'/'socks5'=按协议过滤
         :return:
         """
-        proxies = self.db.getAll(https)
+        proxies = self.db.getAll(proxy_type)
         return [Proxy.createFromJson(_) for _ in proxies]
 
     def exists(self, proxy):
