@@ -95,6 +95,15 @@ class DoValidator(object):
                 return region
         except:
             pass
+        try:
+            url = 'https://api.ipapi.is/?ip=%s' % ip
+            r = WebRequest().get(url=url, retry_time=1, timeout=5).json
+            loc = r.get('location', {}) if isinstance(r.get('location'), dict) else {}
+            region = ' '.join(filter(None, [loc.get('country'), loc.get('state'), loc.get('city')]))
+            if region:
+                return region
+        except:
+            pass
         return 'error'
 
 
