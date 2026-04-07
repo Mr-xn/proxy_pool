@@ -42,11 +42,11 @@ class JsonResponse(Response):
 app.response_class = JsonResponse
 
 api_list = [
-    {"url": "/get", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get a proxy"},
-    {"url": "/get_raw", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get a proxy in raw format (e.g. http://x.x.x.x:8080)"},
-    {"url": "/pop", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get and delete a proxy"},
+    {"url": "/get", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|'', region: 'e.g. CN', exclude_region: 'e.g. CN'", "desc": "get a proxy"},
+    {"url": "/get_raw", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|'', region: 'e.g. CN', exclude_region: 'e.g. CN'", "desc": "get a proxy in raw format (e.g. http://x.x.x.x:8080)"},
+    {"url": "/pop", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|'', region: 'e.g. CN', exclude_region: 'e.g. CN'", "desc": "get and delete a proxy"},
     {"url": "/delete", "params": "proxy: 'e.g. 127.0.0.1:8080'", "desc": "delete an unable proxy"},
-    {"url": "/all", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|''", "desc": "get all proxy from proxy pool"},
+    {"url": "/all", "params": "type: 'https'|'socks4'|'socks4a'|'socks5'|'', region: 'e.g. CN', exclude_region: 'e.g. CN'", "desc": "get all proxy from proxy pool"},
     {"url": "/count", "params": "", "desc": "return proxy count"}
     # 'refresh': 'refresh proxy pool',
 ]
@@ -60,6 +60,13 @@ def _get_proxy_type(request):
     return t if t in VALID_PROXY_TYPES else None
 
 
+def _get_region_params(request):
+    """Parse region and exclude_region query parameters (stripped, None if empty)."""
+    region = request.args.get("region", "").strip() or None
+    exclude_region = request.args.get("exclude_region", "").strip() or None
+    return region, exclude_region
+
+
 @app.route('/')
 def index():
     return {'url': api_list}
@@ -68,14 +75,16 @@ def index():
 @app.route('/get/')
 def get():
     proxy_type = _get_proxy_type(request)
-    proxy = proxy_handler.get(proxy_type)
+    region, exclude_region = _get_region_params(request)
+    proxy = proxy_handler.get(proxy_type, region=region, exclude_region=exclude_region)
     return proxy.to_dict if proxy else {"code": 0, "src": "no proxy"}
 
 
 @app.route('/get_raw/')
 def getRaw():
     proxy_type = _get_proxy_type(request)
-    proxy = proxy_handler.get(proxy_type)
+    region, exclude_region = _get_region_params(request)
+    proxy = proxy_handler.get(proxy_type, region=region, exclude_region=exclude_region)
     if proxy:
         scheme = proxy.protocol if proxy.protocol in ("socks4", "socks4a", "socks5") else (
             "https" if proxy.https else "http"
@@ -87,7 +96,8 @@ def getRaw():
 @app.route('/pop/')
 def pop():
     proxy_type = _get_proxy_type(request)
-    proxy = proxy_handler.pop(proxy_type)
+    region, exclude_region = _get_region_params(request)
+    proxy = proxy_handler.pop(proxy_type, region=region, exclude_region=exclude_region)
     return proxy.to_dict if proxy else {"code": 0, "src": "no proxy"}
 
 
@@ -100,7 +110,8 @@ def refresh():
 @app.route('/all/')
 def getAll():
     proxy_type = _get_proxy_type(request)
-    proxies = proxy_handler.getAll(proxy_type)
+    region, exclude_region = _get_region_params(request)
+    proxies = proxy_handler.getAll(proxy_type, region=region, exclude_region=exclude_region)
     return jsonify([_.to_dict for _ in proxies])
 
 

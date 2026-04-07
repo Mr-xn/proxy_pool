@@ -18,6 +18,7 @@ from test import testLogHandler
 from test import testDbClient
 from test import testProxyClass
 from test import testSocksSupport
+from test import testRegionFilter
 
 if __name__ == '__main__':
     print("ConfigHandler:")
@@ -38,3 +39,6 @@ if __name__ == '__main__':
 
     print("SocksSupport:")
     testSocksSupport.runAllTests()
+
+    print("RegionFilter:")
+    testRegionFilter.runAllTests()
