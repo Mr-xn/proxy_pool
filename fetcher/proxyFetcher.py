@@ -157,7 +157,9 @@ class ProxyFetcher(object):
             'https://raw.githubusercontent.com/zloi-user/hideip.me/main/http.txt',
             'https://www.proxyscan.io/api/proxy?type=http&format=txt',
         ]
-        proxy_pattern = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{2,5}$')
+        proxy_pattern = re.compile(
+            r'^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?):\d{2,5}$'
+        )
         for url in urls:
             try:
                 r = WebRequest().get(url, timeout=10)
