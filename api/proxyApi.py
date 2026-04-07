@@ -43,6 +43,7 @@ app.response_class = JsonResponse
 
 api_list = [
     {"url": "/get", "params": "type: ''https'|''", "desc": "get a proxy"},
+    {"url": "/get_raw", "params": "type: ''https'|''", "desc": "get a proxy in raw format (e.g. http://x.x.x.x:8080)"},
     {"url": "/pop", "params": "", "desc": "get and delete a proxy"},
     {"url": "/delete", "params": "proxy: 'e.g. 127.0.0.1:8080'", "desc": "delete an unable proxy"},
     {"url": "/all", "params": "type: ''https'|''", "desc": "get all proxy from proxy pool"},
@@ -61,6 +62,16 @@ def get():
     https = request.args.get("type", "").lower() == 'https'
     proxy = proxy_handler.get(https)
     return proxy.to_dict if proxy else {"code": 0, "src": "no proxy"}
+
+
+@app.route('/get_raw/')
+def getRaw():
+    https = request.args.get("type", "").lower() == 'https'
+    proxy = proxy_handler.get(https)
+    if proxy:
+        scheme = "https" if proxy.https else "http"
+        return Response("{}://{}".format(scheme, proxy.proxy), mimetype='text/plain')
+    return Response("no proxy", mimetype='text/plain')
 
 
 @app.route('/pop/')
