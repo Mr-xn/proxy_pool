@@ -78,12 +78,41 @@ class DoValidator(object):
 
     @classmethod
     def regionGetter(cls, proxy):
+        ip = proxy.proxy.split(':')[0]
         try:
-            url = 'https://searchplugin.csdn.net/api/v1/ip/get?ip=%s' % proxy.proxy.split(':')[0]
-            r = WebRequest().get(url=url, retry_time=1, timeout=2).json
-            return r['data']['address']
+            url = 'http://ip-api.com/json/%s' % ip
+            r = WebRequest().get(url=url, retry_time=1, timeout=5).json
+            region = ' '.join(filter(None, [r.get('country'), r.get('regionName'), r.get('city')]))
+            if region:
+                return region
         except:
-            return 'error'
+            pass
+        try:
+            url = 'https://whois.pconline.com.cn/ipJson.jsp?ip=%s&json=true' % ip
+            r = WebRequest().get(url=url, retry_time=1, timeout=5).json
+            region = ' '.join(filter(None, [r.get('pro'), r.get('city')]))
+            if region:
+                return region
+        except:
+            pass
+        try:
+            url = 'https://api.ipapi.is/?ip=%s' % ip
+            r = WebRequest().get(url=url, retry_time=1, timeout=5).json
+            loc = r.get('location', {}) if isinstance(r.get('location'), dict) else {}
+            region = ' '.join(filter(None, [loc.get('country'), loc.get('state'), loc.get('city')]))
+            if region:
+                return region
+        except:
+            pass
+        try:
+            url = 'https://api.ip.sb/geoip/%s' % ip
+            r = WebRequest().get(url=url, retry_time=1, timeout=5).json
+            region = ' '.join(filter(None, [r.get('country'), r.get('region'), r.get('city')]))
+            if region:
+                return region
+        except:
+            pass
+        return 'error'
 
 
 class _ThreadChecker(Thread):
