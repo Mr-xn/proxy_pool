@@ -78,12 +78,24 @@ class DoValidator(object):
 
     @classmethod
     def regionGetter(cls, proxy):
+        ip = proxy.proxy.split(':')[0]
         try:
-            url = 'http://ip-api.com/json/%s' % proxy.proxy.split(':')[0]
+            url = 'http://ip-api.com/json/%s' % ip
             r = WebRequest().get(url=url, retry_time=1, timeout=5).json
-            return ' '.join(filter(None, [r.get('country'), r.get('regionName'), r.get('city')]))
+            region = ' '.join(filter(None, [r.get('country'), r.get('regionName'), r.get('city')]))
+            if region:
+                return region
         except:
-            return 'error'
+            pass
+        try:
+            url = 'https://whois.pconline.com.cn/ipJson.jsp?ip=%s&json=true' % ip
+            r = WebRequest().get(url=url, retry_time=1, timeout=5).json
+            region = ' '.join(filter(None, [r.get('pro'), r.get('city')]))
+            if region:
+                return region
+        except:
+            pass
+        return 'error'
 
 
 class _ThreadChecker(Thread):
