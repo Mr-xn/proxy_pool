@@ -47,19 +47,19 @@ class RedisClient(object):
                                                                    socket_timeout=5,
                                                                    **kwargs))
 
-    def get(self, https):
+    def get(self, proxy_type=None):
         """
         返回一个代理
+        :param proxy_type: None=任意, 'https'=支持https的http代理,
+                           'socks4'/'socks4a'/'socks5'=对应协议代理
         :return:
         """
-        if https:
-            items = self.__conn.hvals(self.name)
-            proxies = list(filter(lambda x: json.loads(x).get("https"), items))
-            return choice(proxies) if proxies else None
+        proxies = self.__conn.hvals(self.name)
+        if proxy_type:
+            proxies = self._filter_by_type(proxies, proxy_type)
         else:
-            proxies = self.__conn.hkeys(self.name)
-            proxy = choice(proxies) if proxies else None
-            return self.__conn.hget(self.name, proxy) if proxy else None
+            proxies = list(proxies)
+        return choice(proxies) if proxies else None
 
     def put(self, proxy_obj):
         """
@@ -70,12 +70,13 @@ class RedisClient(object):
         data = self.__conn.hset(self.name, proxy_obj.proxy, proxy_obj.to_json)
         return data
 
-    def pop(self, https):
+    def pop(self, proxy_type=None):
         """
         弹出一个代理
+        :param proxy_type: 同get方法
         :return: dict {proxy: value}
         """
-        proxy = self.get(https)
+        proxy = self.get(proxy_type)
         if proxy:
             self.__conn.hdel(self.name, json.loads(proxy).get("proxy", ""))
         return proxy if proxy else None
@@ -104,16 +105,16 @@ class RedisClient(object):
         """
         return self.__conn.hset(self.name, proxy_obj.proxy, proxy_obj.to_json)
 
-    def getAll(self, https):
+    def getAll(self, proxy_type=None):
         """
         字典形式返回所有代理, 使用changeTable指定hash name
+        :param proxy_type: None=全部, 'https'/'socks4'/'socks4a'/'socks5'=按协议过滤
         :return:
         """
         items = self.__conn.hvals(self.name)
-        if https:
-            return list(filter(lambda x: json.loads(x).get("https"), items))
-        else:
-            return items
+        if proxy_type:
+            return self._filter_by_type(items, proxy_type)
+        return list(items)
 
     def clear(self):
         """
@@ -127,8 +128,26 @@ class RedisClient(object):
         返回代理数量
         :return:
         """
-        proxies = self.getAll(https=False)
-        return {'total': len(proxies), 'https': len(list(filter(lambda x: json.loads(x).get("https"), proxies)))}
+        proxies = self.getAll()
+        protocol_dict = {}
+        for item in proxies:
+            d = json.loads(item)
+            protocol = d.get("protocol", "http")
+            protocol_dict[protocol] = protocol_dict.get(protocol, 0) + 1
+        https_count = len([x for x in proxies if json.loads(x).get("https")])
+        return {'total': len(proxies), 'https': https_count, 'protocol': protocol_dict}
+
+    def _filter_by_type(self, items, proxy_type):
+        """
+        按代理类型过滤
+        :param items: list of JSON strings
+        :param proxy_type: 'https' 或 'socks4'/'socks4a'/'socks5'
+        :return: filtered list
+        """
+        if proxy_type == "https":
+            return list(filter(lambda x: json.loads(x).get("https"), items))
+        else:
+            return list(filter(lambda x: json.loads(x).get("protocol", "http") == proxy_type, items))
 
     def changeTable(self, name):
         """

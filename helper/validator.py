@@ -8,6 +8,7 @@
 -------------------------------------------------
    Change Activity:
                    2023/03/10: 支持带用户认证的代理格式 username:password@ip:port
+                   2024/01/01: 新增socks4/socks4a/socks5协议验证
 -------------------------------------------------
 """
 __author__ = 'JHao'
@@ -32,6 +33,9 @@ class ProxyValidator(withMetaclass(Singleton)):
     pre_validator = []
     http_validator = []
     https_validator = []
+    socks4_validator = []
+    socks4a_validator = []
+    socks5_validator = []
 
     @classmethod
     def addPreValidator(cls, func):
@@ -46,6 +50,21 @@ class ProxyValidator(withMetaclass(Singleton)):
     @classmethod
     def addHttpsValidator(cls, func):
         cls.https_validator.append(func)
+        return func
+
+    @classmethod
+    def addSocks4Validator(cls, func):
+        cls.socks4_validator.append(func)
+        return func
+
+    @classmethod
+    def addSocks4aValidator(cls, func):
+        cls.socks4a_validator.append(func)
+        return func
+
+    @classmethod
+    def addSocks5Validator(cls, func):
+        cls.socks5_validator.append(func)
         return func
 
 
@@ -84,3 +103,45 @@ def httpsTimeOutValidator(proxy):
 def customValidatorExample(proxy):
     """自定义validator函数，校验代理是否可用, 返回True/False"""
     return True
+
+
+@ProxyValidator.addSocks4Validator
+def socks4TimeOutValidator(proxy):
+    """socks4协议检测"""
+    proxies = {
+        "http": "socks4://{proxy}".format(proxy=proxy),
+        "https": "socks4://{proxy}".format(proxy=proxy),
+    }
+    try:
+        r = head(conf.httpUrl, headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout)
+        return True if r.status_code == 200 else False
+    except Exception:
+        return False
+
+
+@ProxyValidator.addSocks4aValidator
+def socks4aTimeOutValidator(proxy):
+    """socks4a协议检测"""
+    proxies = {
+        "http": "socks4a://{proxy}".format(proxy=proxy),
+        "https": "socks4a://{proxy}".format(proxy=proxy),
+    }
+    try:
+        r = head(conf.httpUrl, headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout)
+        return True if r.status_code == 200 else False
+    except Exception:
+        return False
+
+
+@ProxyValidator.addSocks5Validator
+def socks5TimeOutValidator(proxy):
+    """socks5协议检测"""
+    proxies = {
+        "http": "socks5://{proxy}".format(proxy=proxy),
+        "https": "socks5://{proxy}".format(proxy=proxy),
+    }
+    try:
+        r = head(conf.httpUrl, headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout)
+        return True if r.status_code == 200 else False
+    except Exception:
+        return False

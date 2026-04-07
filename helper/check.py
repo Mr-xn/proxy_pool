@@ -10,6 +10,7 @@
                    2019/08/06: 执行代理校验
                    2021/05/25: 分别校验http和https
                    2022/08/16: 获取代理Region信息
+                   2024/01/01: 新增socks4/socks4a/socks5协议检测
 -------------------------------------------------
 """
 __author__ = 'JHao'
@@ -42,6 +43,24 @@ class DoValidator(object):
         http_r = cls.httpValidator(proxy)
         https_r = False if not http_r else cls.httpsValidator(proxy)
 
+        if http_r:
+            proxy.protocol = "http"
+        else:
+            # Try SOCKS protocols when HTTP fails.
+            # Try socks5 first (most capable), then socks4a, then socks4.
+            if cls.socks5Validator(proxy):
+                proxy.protocol = "socks5"
+                http_r = True
+                https_r = cls.socks5HttpsValidator(proxy)
+            elif cls.socks4aValidator(proxy):
+                proxy.protocol = "socks4a"
+                http_r = True
+                https_r = cls.socks4aHttpsValidator(proxy)
+            elif cls.socks4Validator(proxy):
+                proxy.protocol = "socks4"
+                http_r = True
+                https_r = False
+
         proxy.check_count += 1
         proxy.last_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         proxy.last_status = True if http_r else False
@@ -68,6 +87,59 @@ class DoValidator(object):
             if not func(proxy.proxy):
                 return False
         return True
+
+    @classmethod
+    def socks4Validator(cls, proxy):
+        for func in ProxyValidator.socks4_validator:
+            if not func(proxy.proxy):
+                return False
+        return True
+
+    @classmethod
+    def socks4aValidator(cls, proxy):
+        for func in ProxyValidator.socks4a_validator:
+            if not func(proxy.proxy):
+                return False
+        return True
+
+    @classmethod
+    def socks5Validator(cls, proxy):
+        for func in ProxyValidator.socks5_validator:
+            if not func(proxy.proxy):
+                return False
+        return True
+
+    @classmethod
+    def socks4aHttpsValidator(cls, proxy):
+        """检测socks4a代理是否支持https"""
+        from requests import head
+        from helper.validator import HEADER
+        proxies = {
+            "http": "socks4a://{proxy}".format(proxy=proxy.proxy),
+            "https": "socks4a://{proxy}".format(proxy=proxy.proxy),
+        }
+        try:
+            r = head(cls.conf.httpsUrl, headers=HEADER, proxies=proxies,
+                     timeout=cls.conf.verifyTimeout, verify=False)
+            return r.status_code == 200
+        except Exception:
+            return False
+
+    @classmethod
+    def socks5HttpsValidator(cls, proxy):
+        """检测socks5代理是否支持https"""
+        from requests import head
+        from helper.validator import HEADER
+        proxies = {
+            "http": "socks5://{proxy}".format(proxy=proxy.proxy),
+            "https": "socks5://{proxy}".format(proxy=proxy.proxy),
+        }
+        try:
+            r = head(cls.conf.httpsUrl, headers=HEADER, proxies=proxies,
+                     timeout=cls.conf.verifyTimeout, verify=False)
+            return r.status_code == 200
+        except Exception:
+            return False
 
     @classmethod
     def preValidator(cls, proxy):
